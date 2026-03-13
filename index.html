@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>100마일의 고백</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=Gamja+Flower&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Gowun Batang"', 'serif'],
+                        display: ['"Gamja Flower"', 'cursive'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- React, ReactDOM, Babel, Framer Motion -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/framer-motion@10.16.4/dist/framer-motion.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            color: white;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+        #error-display {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255,0,0,0.8);
+            color: white;
+            padding: 10px;
+            z-index: 9999;
+            display: none;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <div id="error-display"></div>
+    <div id="root">
+        <div style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+            <p>로딩 중...</p>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        // Error handling for the user
+        window.onerror = function(msg, url, line, col, error) {
+            const display = document.getElementById('error-display');
+            display.style.display = 'block';
+            display.textContent = `Error: ${msg}\nLine: ${line}\nStack: ${error ? error.stack : 'N/A'}`;
+            return false;
+        };
+
+        const { useState, useEffect, useCallback } = React;
+        
+        // Framer Motion global check
+        const motion = window.Motion.motion;
+        const AnimatePresence = window.Motion.AnimatePresence;
+
+        const BG_URL = "https://raw.githubusercontent.com/Te251/100/refs/heads/main/1.3__artist_oreki%20genya%2C%20__%2C%201.7__artist_zetto023%20__%2C0.2__artist_nume%20x__%2C%200.5__%20s-3628835724.png";
+        const CHAR_NORMAL = "https://raw.githubusercontent.com/Te251/100/refs/heads/main/image%20(5).png";
+        const CHAR_SHY = "https://raw.githubusercontent.com/Te251/100/refs/heads/main/image%20(6).png";
+
+        function App() {
+            const [gameState, setGameState] = useState('TITLE');
+            const [userName, setUserName] = useState("");
+            const [currentIndex, setCurrentIndex] = useState(0);
+            const [displayedText, setDisplayedText] = useState("");
+            const [isTyping, setIsTyping] = useState(false);
+            const [showChoices, setShowChoices] = useState(false);
+            const [dialogues, setDialogues] = useState([]);
+
+            useEffect(() => {
+                if (userName) {
+                    setDialogues([
+                        {
+                            name: userName,
+                            text: "오랜만에 만나니 좋네. 누가 온다그랬던가",
+                            image: BG_URL
+                        },
+                        {
+                            name: "김지훈",
+                            text: "어 왔다. 왔다. 우리 유명인!",
+                            image: BG_URL
+                        },
+                        {
+                            name: "???",
+                            text: "어 김지훈",
+                            image: BG_URL,
+                            characterImage: CHAR_NORMAL
+                        },
+                        {
+                            text: "(그가 꾸벅 목례했다)",
+                            choices: ["똑같이 목례한다", "무시한다", "이름을 물어본다"],
+                            image: BG_URL,
+                            characterImage: CHAR_NORMAL
+                        }
+                    ]);
+                }
+            }, [userName]);
+
+            const currentDialogue = dialogues[currentIndex];
+
+            useEffect(() => {
+                if (gameState !== 'PLAYING' || !currentDialogue) {
+                    setDisplayedText("");
+                    return;
+                }
+
+                setIsTyping(true);
+                setShowChoices(false);
+                setDisplayedText("");
+                
+                let i = 0;
+                const text = currentDialogue.text;
+                const interval = setInterval(() => {
+                    setDisplayedText(text.slice(0, i + 1));
+                    i++;
+                    if (i >= text.length) {
+                        clearInterval(interval);
+                        setIsTyping(false);
+                        if (currentDialogue.choices) {
+                            setShowChoices(true);
+                        }
+                    }
+                }, 40);
+
+                return () => clearInterval(interval);
+            }, [currentIndex, currentDialogue?.text, gameState]);
+
+            const handleNext = () => {
+                if (gameState !== 'PLAYING' || !currentDialogue) return;
+
+                if (isTyping) {
+                    setDisplayedText(currentDialogue.text);
+                    setIsTyping(false);
+                    if (currentDialogue.choices) {
+                        setShowChoices(true);
+                    }
+                    return;
+                }
+
+                if (currentDialogue.choices && !showChoices) {
+                    setShowChoices(true);
+                    return;
+                }
+
+                if (showChoices) return;
+
+                if (currentDialogue.isEnd) {
+                    setGameState('ENDING');
+                    return;
+                }
+
+                if (currentIndex < dialogues.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
+                }
+            };
+
+            const handleChoice = (choice) => {
+                setShowChoices(false);
+                const commonFinals = [
+                    {
+                        name: userName,
+                        text: "(그 후로는 그는 거의 말이 없었다.)",
+                        image: BG_URL,
+                        characterImage: CHAR_NORMAL
+                    },
+                    {
+                        name: userName,
+                        text: "(말을 걸어도 고개를 끄덕이는 게 전부였다.)",
+                        image: BG_URL,
+                        characterImage: CHAR_NORMAL
+                    },
+                    {
+                        name: "하도윤",
+                        text: "저...저기...",
+                        image: BG_URL,
+                        characterImage: CHAR_SHY
+                    },
+                    {
+                        name: "하도윤",
+                        text: "아, 아닙니다...",
+                        image: BG_URL,
+                        characterImage: CHAR_SHY
+                    },
+                    {
+                        name: userName,
+                        text: "안녕히가세요. 지훈씨 세나야 다음에 또 봐! 결혼 축하해!",
+                        image: BG_URL,
+                    },
+                    {
+                        text: "(그날은 그게 끝이었다.)",
+                        image: BG_URL,
+                        isEnd: true
+                    }
+                ];
+
+                if (choice === '똑같이 목례한다') {
+                    setDialogues(prev => [...prev, 
+                        {
+                            name: "하도윤",
+                            text: "저...하도윤 입니다",
+                            image: BG_URL,
+                            characterImage: CHAR_NORMAL
+                        },
+                        {
+                            name: userName,
+                            text: `${userName} 입니다.`,
+                            image: BG_URL,
+                            characterImage: CHAR_NORMAL
+                        },
+                        ...commonFinals
+                    ]);
+                    setCurrentIndex(currentIndex + 1);
+                } else if (choice === '무시한다') {
+                    setDialogues(prev => [...prev, ...commonFinals]);
+                    setCurrentIndex(currentIndex + 1);
+                } else if (choice === '이름을 물어본다') {
+                    setDialogues(prev => [...prev, 
+                        {
+                            name: "하도윤",
+                            text: "하도윤입니다. 야구선수입니다.",
+                            image: BG_URL,
+                            characterImage: CHAR_NORMAL
+                        },
+                        ...commonFinals
+                    ]);
+                    setCurrentIndex(currentIndex + 1);
+                }
+            };
+
+            const handleStart = (e) => {
+                e.preventDefault();
+                if (userName.trim()) {
+                    setGameState('PLAYING');
+                }
+            };
+
+            if (gameState === 'TITLE') {
+                return (
+                    <div className="relative w-full h-screen bg-black flex items-center justify-center overflow-hidden">
+                        <div className="absolute inset-0 z-0">
+                            <img
+                                src={BG_URL}
+                                alt="Title Background"
+                                className="w-full h-full object-cover opacity-60"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-sky-900/20 to-sky-900/40" />
+                        </div>
+
+                        <motion.div 
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 1.2 }}
+                            className="relative z-10 text-center px-6"
+                        >
+                            <motion.h1 
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: 0.5, duration: 1, type: "spring" }}
+                                className="font-display text-7xl md:text-9xl text-white mb-4 drop-shadow-[0_0_20px_rgba(255,255,255,0.5)]"
+                            >
+                                100마일의 고백
+                            </motion.h1>
+                            <motion.h2 
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.8, duration: 1 }}
+                                className="font-display text-2xl md:text-3xl text-sky-200 mb-12 tracking-widest"
+                            >
+                                ~야구엔 관심이 없어서~
+                            </motion.h2>
+
+                            <motion.button
+                                whileHover={{ scale: 1.1, color: "#fff" }}
+                                whileTap={{ scale: 0.95 }}
+                                animate={{ 
+                                    boxShadow: ["0 0 0px rgba(56,189,248,0)", "0 0 20px rgba(56,189,248,0.4)", "0 0 0px rgba(56,189,248,0)"]
+                                }}
+                                transition={{ 
+                                    boxShadow: { repeat: Infinity, duration: 2 }
+                                }}
+                                onClick={() => setGameState('INPUT')}
+                                className="group relative py-4 px-12 bg-white/10 border-2 border-white/30 rounded-full text-2xl md:text-3xl font-display text-sky-100 backdrop-blur-md transition-all hover:bg-sky-500/20 hover:border-sky-400"
+                            >
+                                <span className="relative z-10">PROLOGUE START</span>
+                                <div className="absolute inset-0 rounded-full bg-sky-400/20 blur-xl opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </motion.button>
+                        </motion.div>
+
+                        <div className="absolute bottom-8 left-0 right-0 text-center z-10">
+                            <p className="text-white/40 text-sm tracking-widest font-sans uppercase">© 2026 Studio 100Mile</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (gameState === 'INPUT') {
+                return (
+                    <div className="w-full h-screen bg-black flex items-center justify-center p-6 overflow-hidden relative">
+                        <div className="absolute inset-0 z-0">
+                            <img
+                                src={BG_URL}
+                                alt="Input Background"
+                                className="w-full h-full object-cover opacity-40 blur-sm"
+                            />
+                        </div>
+                        <motion.form 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            onSubmit={handleStart}
+                            className="relative z-10 w-full max-w-md bg-white/5 border-2 border-sky-400/30 p-10 rounded-3xl backdrop-blur-xl shadow-[0_0_50px_rgba(14,165,233,0.1)]"
+                        >
+                            <h1 className="text-3xl font-bold text-center mb-8 text-sky-100 leading-tight font-sans">
+                                당신의 이름을<br />알려주세요
+                            </h1>
+                            <input
+                                autoFocus
+                                type="text"
+                                value={userName}
+                                onChange={(e) => setUserName(e.target.value)}
+                                className="w-full bg-black/50 border-2 border-sky-400/50 rounded-2xl px-6 py-4 text-xl text-white focus:outline-none focus:border-sky-400 transition-colors mb-6 text-center font-sans"
+                                placeholder="이름을 입력하세요"
+                            />
+                            <button
+                                type="submit"
+                                disabled={!userName.trim()}
+                                className="w-full py-4 bg-sky-600/80 hover:bg-sky-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xl rounded-2xl transition-all shadow-lg shadow-sky-900/20 font-sans"
+                            >
+                                이야기 속으로
+                            </button>
+                        </motion.form>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="relative w-full h-[100dvh] bg-black overflow-hidden font-sans text-white">
+                    <AnimatePresence>
+                        {gameState === 'ENDING' && (
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 2 }}
+                                className="absolute inset-0 z-50 bg-black flex items-center justify-center"
+                            >
+                                <motion.p 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    transition={{ delay: 1, duration: 1 }}
+                                    className="text-white/30 tracking-[1em] uppercase text-sm"
+                                >
+                                    Prologue End
+                                </motion.p>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={currentDialogue?.image || 'bg'}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 1 }}
+                            className="absolute inset-0 z-0"
+                        >
+                            <img
+                                src={currentDialogue?.image || BG_URL}
+                                alt="Background"
+                                className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/30" />
+                        </motion.div>
+                    </AnimatePresence>
+
+                    <AnimatePresence mode="wait">
+                        {currentDialogue?.characterImage && (
+                            <motion.div
+                                key={currentDialogue.characterImage}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: 20 }}
+                                transition={{ duration: 0.5 }}
+                                className="absolute inset-x-0 bottom-0 h-full z-1 flex items-end justify-center pointer-events-none"
+                            >
+                                <img
+                                    src={currentDialogue.characterImage}
+                                    alt="Character"
+                                    className={`h-full md:h-[115vh] w-auto object-contain object-bottom origin-bottom ${
+                                        currentDialogue.characterImage === CHAR_SHY ? 'scale-[1.62]' : 'scale-[1.8]'
+                                    } md:scale-90 translate-x-[10%] md:translate-x-[25%]`}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <AnimatePresence>
+                        {showChoices && currentDialogue?.choices && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -20 }}
+                                className="absolute inset-x-0 top-[20%] z-20 flex flex-col items-center gap-4 px-4"
+                            >
+                                {currentDialogue.choices.map((choice, idx) => (
+                                    <button
+                                        key={idx}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleChoice(choice);
+                                        }}
+                                        className="w-full max-w-md py-4 px-6 bg-black/90 border-2 border-sky-400 rounded-lg text-lg font-medium hover:bg-sky-900/90 transition-all hover:scale-105 shadow-[0_0_20px_rgba(56,189,248,0.2)]"
+                                    >
+                                        {choice}
+                                    </button>
+                                ))}
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    <div 
+                        className="absolute inset-x-0 bottom-0 z-10 p-6 md:p-12 cursor-pointer"
+                        onClick={handleNext}
+                    >
+                        <div className="max-w-5xl mx-auto relative">
+                            {currentDialogue?.name && (
+                                <div className="absolute -top-10 left-0">
+                                    <div className="bg-sky-900/90 border-t-2 border-x-2 border-sky-400 px-8 py-2 rounded-t-xl shadow-lg">
+                                        <span className="text-xl font-bold tracking-wider text-sky-100">
+                                            {currentDialogue.name}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="bg-black/80 border-2 border-sky-400/50 rounded-xl rounded-tl-none p-8 min-h-[160px] shadow-2xl backdrop-blur-sm relative">
+                                <p className="text-xl md:text-2xl leading-relaxed font-medium">
+                                    {displayedText}
+                                    {isTyping && <span className="inline-block w-1 h-6 bg-sky-400 ml-1 animate-pulse" />}
+                                </p>
+
+                                {!isTyping && !showChoices && (
+                                    <motion.div
+                                        animate={{ opacity: [0.2, 1, 0.2], y: [0, 4, 0] }}
+                                        transition={{ repeat: Infinity, duration: 1.5 }}
+                                        className="absolute bottom-4 right-6 text-sky-400"
+                                    >
+                                        <div className="w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-t-[15px] border-t-sky-400" />
+                                    </motion.div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
